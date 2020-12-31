@@ -29,7 +29,7 @@ struct StatusParams {
 // plc的IP地址
 const char* plc_ip = "192.168.1.33";
 // 服务器地址
-const char* server_ip = "111.229.240.7";
+const char* server_ip = "81.70.196.142";
 
 // 推流地址
 const char* rtmp_addr = "rtmp://81.70.196.142:8090/live";
@@ -169,7 +169,7 @@ unsigned int WINAPI pthControlPLC(void*) {
 		vel_speed[2] = c_params.w_speed;
 		ReleaseMutex(s_mutex);
 		vel2PLC(vel_speed, plc_speed);
-		//cout << plc_speed[0] << endl;
+		//cout << "right_front:" << plc_speed[0] << endl;
 		byte buff[8] = { 0 };//创建一个读写缓存区
 		for (int i = 0; i < 8; i++) {
 			if (i % 2) {
@@ -223,12 +223,13 @@ unsigned int WINAPI pthTcpclient(void*) {
 
 unsigned int WINAPI pthPushImage(void*) {
 	
-	cv::Mat image, tmp_img;
+	cv::Mat f_image, b_image, image;
 	int width = 1280;
 	int height = 720;
-	int channel = 3;
 
-	MyRTMP rtmp(width, height, channel, 20);
+	MyRTMP rtmp(width, height, 3, 24);
+	
+
 	if (rtmp.initRTMP(rtmp_addr) == false) {
 		cout << "推流器初始化失败" << endl;
 		return -1;
@@ -236,21 +237,17 @@ unsigned int WINAPI pthPushImage(void*) {
 
 	while (pushimg_flag) {
 		WaitForSingleObject(s_mutex, INFINITE);
-		
 		if (c_params.camera_tag == 1) {
 			if (front_img.empty()) {
+				
 				ReleaseMutex(s_mutex);
 				continue;
 			}
-			front_img.copyTo(tmp_img);
+			front_img.copyTo(image);
 			
 			ReleaseMutex(s_mutex);
-			if (channel == 1) {
-				cv::cvtColor(tmp_img, image, cv::COLOR_BGR2GRAY);
-			}
-			else {
-				cv::cvtColor(tmp_img, image, cv::COLOR_BGR2BGRA);
-			}
+			
+			
 		}
 		else if (c_params.camera_tag == -1) {
 			if (back_img.empty()) {
@@ -259,17 +256,17 @@ unsigned int WINAPI pthPushImage(void*) {
 			}
 			back_img.copyTo(image);
 			ReleaseMutex(s_mutex);
+			cv::cvtColor(image, image, cv::COLOR_GRAY2BGRA);
 		}
 		else {
+			
 			ReleaseMutex(s_mutex);
 			continue;
 		}
-		
 		cv::resize(image, image, cv::Size(width, height));
-		cv::imshow("test", image);
-		
+		cv::imshow("push", image);
 		rtmp.startRTMP(image.data, image.elemSize());
-		cv::waitKey(30);
+		cv::waitKey(10);
 	}
 	return 0;
 }
@@ -304,6 +301,8 @@ unsigned int WINAPI pthGetFrontImg(void*) {
 			zed.retrieveImage(zed_img, sl::VIEW::RIGHT);
 			//WaitForSingleObject(s_mutex, INFINITE);
 			front_img = cv::Mat((int)zed_img.getHeight(), (int)zed_img.getWidth(), CV_8UC4, zed_img.getPtr<sl::uchar1>(sl::MEM::CPU));
+			//cout << "zed_channel:" << front_img.channels() << endl;
+
 			//ReleaseMutex(s_mutex);
 			cv::waitKey(10);
 		}
@@ -386,6 +385,8 @@ unsigned int WINAPI pthGetBackImg(void*) {
 			ReleaseMutex(s_mutex);
 			continue;
 		}
+		//cout << "hk_channel:" << back_img.channels() << endl;
+
 		//ReleaseMutex(s_mutex);
 		
 		cv::waitKey(10);

@@ -187,7 +187,7 @@ bool MyRTMP::startRTMP(const uchar* data, int ele_size) {
 void MyRTMP::printError(int error_code) {
 	char buffer[512] = { 0 };
 	av_strerror(error_code, buffer, sizeof(buffer) - 1);
-	cout << buffer << endl;
+	cout << "error_code:" << buffer << endl;
 }
 
 MyRTMP::~MyRTMP() {
